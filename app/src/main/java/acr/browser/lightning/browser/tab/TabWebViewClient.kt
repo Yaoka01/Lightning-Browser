@@ -98,16 +98,23 @@ class TabWebViewClient @AssistedInject constructor(
         goBackObservable.onNext(view.canGoBack())
         goForwardObservable.onNext(view.canGoForward())
 
-        // --- MOD TAHAP 1: USERSCRIPT ENGINE (ALÁ VIA BROWSER) ---
-        val userScript = """
-            (function() {
-                // Memberikan border emas sebagai tanda MOD berhasil
-                document.body.style.border = '10px solid gold';
-                console.log('MOD: UserScript Engine Aktif di ' + window.location.href);
-            })();
-        """.trimIndent()
-        
-        view.evaluateJavascript(userScript, null)
+        // --- MOD USERSCRIPT DYNAMIC (ALÁ VIA BROWSER) ---
+        // Menarik script dari menu Settings yang kamu input nanti
+        val scriptUser = userPreferences.customUserScript 
+
+        if (scriptUser.isNotEmpty()) {
+            val executeScript = """
+                (function() {
+                    try {
+                        $scriptUser
+                    } catch (e) {
+                        console.error('UserScript Error: ' + e);
+                    }
+                })();
+            """.trimIndent()
+            
+            view.evaluateJavascript(executeScript, null)
+        }
         // --- SELESAI MOD ---
 
         view.postVisualStateCallback(1, object : WebView.VisualStateCallback() {
@@ -180,7 +187,6 @@ class TabWebViewClient @AssistedInject constructor(
         urlWithSslError = webView.url
         sslState = SslState.Invalid(error)
         sslStateObservable.onNext(sslState)
-        sslState = SslState.Invalid(error)
 
         when (sslWarningPreferences.recallBehaviorForDomain(webView.url)) {
             SslWarningPreferences.Behavior.PROCEED -> return handler.proceed()
