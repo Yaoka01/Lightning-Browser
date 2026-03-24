@@ -59,34 +59,12 @@ class TabWebViewClient @AssistedInject constructor(
         File(application.filesDir, "generated-html")
     }
 
-    /**
-     * Emits changes to the current URL.
-     */
     val urlObservable: PublishSubject<String> = PublishSubject.create()
-
-    /**
-     * Emits changes to the current SSL state.
-     */
     val sslStateObservable: PublishSubject<SslState> = PublishSubject.create()
-
-    /**
-     * Emits changes to the can go back state of the browser.
-     */
     val goBackObservable: PublishSubject<Boolean> = PublishSubject.create()
-
-    /**
-     * Emits changes to the can go forward state of the browser.
-     */
     val goForwardObservable: PublishSubject<Boolean> = PublishSubject.create()
-
-    /**
-     * Emit when the tab has finished rendering its content.
-     */
     val finishedObservable = PublishSubject.create<Unit>()
 
-    /**
-     * The current SSL state of the page.
-     */
     var sslState: SslState = SslState.None
         private set
 
@@ -119,13 +97,25 @@ class TabWebViewClient @AssistedInject constructor(
         urlObservable.onNext(url)
         goBackObservable.onNext(view.canGoBack())
         goForwardObservable.onNext(view.canGoForward())
+
+        // --- MOD TAHAP 1: USERSCRIPT ENGINE (ALÁ VIA BROWSER) ---
+        val userScript = """
+            (function() {
+                // Memberikan border emas sebagai tanda MOD berhasil
+                document.body.style.border = '10px solid gold';
+                console.log('MOD: UserScript Engine Aktif di ' + window.location.href);
+            })();
+        """.trimIndent()
+        
+        view.evaluateJavascript(userScript, null)
+        // --- SELESAI MOD ---
+
         view.postVisualStateCallback(1, object : WebView.VisualStateCallback() {
             override fun onComplete(requestId: Long) {
                 finishedObservable.onNext(Unit)
             }
         })
     }
-
 
     override fun onScaleChanged(view: WebView, oldScale: Float, newScale: Float) {
         if (view.isShown && userPreferences.textReflowEnabled) {
@@ -138,7 +128,6 @@ class TabWebViewClient @AssistedInject constructor(
                     view.evaluateJavascript(textReflow.provideJs()) { isReflowRunning = false }
                 }, 100)
             }
-
         }
     }
 
@@ -151,13 +140,10 @@ class TabWebViewClient @AssistedInject constructor(
         val context = view.context
         AlertDialog.Builder(context).apply {
             val dialogView = DialogAuthRequestBinding.inflate(LayoutInflater.from(context))
-
             val realmLabel = dialogView.authRequestRealmTextview
             val name = dialogView.authRequestUsernameEdittext
             val password = dialogView.authRequestPasswordEdittext
-
             realmLabel.text = context.getString(R.string.label_realm, realm)
-
             setView(dialogView.root)
             setTitle(R.string.title_sign_in)
             setCancelable(true)
@@ -192,7 +178,6 @@ class TabWebViewClient @AssistedInject constructor(
     override fun onReceivedSslError(webView: WebView, handler: SslErrorHandler, error: SslError) {
         val context = webView.context
         urlWithSslError = webView.url
-
         sslState = SslState.Invalid(error)
         sslStateObservable.onNext(sslState)
         sslState = SslState.Invalid(error)
@@ -204,7 +189,6 @@ class TabWebViewClient @AssistedInject constructor(
         }
 
         val errorCodeMessageCodes = error.getAllSslErrorMessageCodes()
-
         val stringBuilder = StringBuilder()
         for (messageCode in errorCodeMessageCodes) {
             stringBuilder.append(" - ").append(context.getString(messageCode)).append('\n')
@@ -271,38 +255,17 @@ class TabWebViewClient @AssistedInject constructor(
 
     private fun SslError.getAllSslErrorMessageCodes(): List<Int> {
         val errorCodeMessageCodes = ArrayList<Int>(1)
-
-        if (hasError(SslError.SSL_DATE_INVALID)) {
-            errorCodeMessageCodes.add(R.string.message_certificate_date_invalid)
-        }
-        if (hasError(SslError.SSL_EXPIRED)) {
-            errorCodeMessageCodes.add(R.string.message_certificate_expired)
-        }
-        if (hasError(SslError.SSL_IDMISMATCH)) {
-            errorCodeMessageCodes.add(R.string.message_certificate_domain_mismatch)
-        }
-        if (hasError(SslError.SSL_NOTYETVALID)) {
-            errorCodeMessageCodes.add(R.string.message_certificate_not_yet_valid)
-        }
-        if (hasError(SslError.SSL_UNTRUSTED)) {
-            errorCodeMessageCodes.add(R.string.message_certificate_untrusted)
-        }
-        if (hasError(SslError.SSL_INVALID)) {
-            errorCodeMessageCodes.add(R.string.message_certificate_invalid)
-        }
-
+        if (hasError(SslError.SSL_DATE_INVALID)) errorCodeMessageCodes.add(R.string.message_certificate_date_invalid)
+        if (hasError(SslError.SSL_EXPIRED)) errorCodeMessageCodes.add(R.string.message_certificate_expired)
+        if (hasError(SslError.SSL_IDMISMATCH)) errorCodeMessageCodes.add(R.string.message_certificate_domain_mismatch)
+        if (hasError(SslError.SSL_NOTYETVALID)) errorCodeMessageCodes.add(R.string.message_certificate_not_yet_valid)
+        if (hasError(SslError.SSL_UNTRUSTED)) errorCodeMessageCodes.add(R.string.message_certificate_untrusted)
+        if (hasError(SslError.SSL_INVALID)) errorCodeMessageCodes.add(R.string.message_certificate_invalid)
         return errorCodeMessageCodes
     }
 
-    /**
-     * The factory for constructing the client.
-     */
     @AssistedFactory
     interface Factory {
-
-        /**
-         * Create the client.
-         */
         fun create(
             headers: Map<String, String>,
             @Assisted("cache") cacheStoragePathHandler: InternalStoragePathHandler,
@@ -312,9 +275,7 @@ class TabWebViewClient @AssistedInject constructor(
 
     companion object {
         private const val TAG = "TabWebViewClient"
-
         private val emptyResponseByteArray: ByteArray = byteArrayOf()
-
         private const val BLOCKED_RESPONSE_MIME_TYPE = "text/plain"
         private const val BLOCKED_RESPONSE_ENCODING = "utf-8"
     }
