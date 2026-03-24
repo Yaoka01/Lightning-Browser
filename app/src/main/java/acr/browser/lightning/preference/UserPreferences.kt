@@ -68,6 +68,10 @@ class UserPreferences @Inject constructor(
      * True if the browser should hide the navigation bar when scrolling, false if it should be
      * immobile.
      */
+    var customUserScript: String
+    get() = sharedPreferences.getString("custom_user_script", "") ?: ""
+    set(value) = sharedPreferences.edit().putString("custom_user_script", value).apply()
+     
     var fullScreenEnabled by preferences.booleanPreference(FULL_SCREEN, true)
 
     /**
