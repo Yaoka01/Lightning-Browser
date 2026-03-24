@@ -36,5 +36,16 @@
         <Preference
             android:key="suggestions_choice"
             android:title="@string/search_suggestions"/>
+        <androidx.preference.PreferenceCategory
+            app:title="Advanced Mod">
+        <androidx.preference.EditTextPreference
+            app:key="custom_user_script"
+            app:title="Custom UserScript (JS)"
+            app:useEditTextService="true"
+            app:dialogTitle="Input JavaScript Code"
+            app:summary="Tulis kode JS di sini untuk dijalankan otomatis di setiap website" />
+            
+    </androidx.preference.PreferenceCategory>
+
     </PreferenceCategory>
 </PreferenceScreen>
