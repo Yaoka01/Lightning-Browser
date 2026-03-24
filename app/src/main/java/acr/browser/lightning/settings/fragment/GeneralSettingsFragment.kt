@@ -83,6 +83,14 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
             onClick = ::showSearchSuggestionsDialog
         )
 
+        // --- MOD: TAMBAHKAN MENU USERSCRIPT ---
+        clickableDynamicPreference(
+            preference = SETTINGS_USERSCRIPT,
+            summary = if (userPreferences.customUserScript.isEmpty()) "Tidak ada script" else "Script aktif",
+            onClick = ::showUserScriptDialog
+        )
+        // --- SELESAI MOD ---
+
         togglePreference(
             preference = SETTINGS_IMAGES,
             isChecked = userPreferences.blockImagesEnabled,
@@ -108,12 +116,27 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
         )
     }
 
+    // --- MOD: FUNGSI UNTUK MENAMPILKAN INPUT SCRIPT ---
+    private fun showUserScriptDialog(summaryUpdater: SummaryUpdater) {
+        activity?.let {
+            BrowserDialog.showEditText(
+                it,
+                R.string.title_userscript, // Kamu harus tambah string ini di strings.xml atau pakai string mentah
+                R.string.title_userscript,
+                userPreferences.customUserScript,
+                R.string.action_ok
+            ) { script ->
+                userPreferences.customUserScript = script
+                summaryUpdater.updateSummary(if (script.isEmpty()) "Tidak ada script" else "Script aktif")
+            }
+        }
+    }
+
     private fun ProxyChoice.toSummary(): String {
         val stringArray = resources.getStringArray(R.array.proxy_choices_array)
         return when (this) {
             ProxyChoice.NONE -> stringArray[0]
             ProxyChoice.ORBOT -> stringArray[1]
-            // ProxyChoice.I2P -> stringArray[2]
             ProxyChoice.MANUAL -> "${userPreferences.proxyHost}:${userPreferences.proxyPort}"
         }
     }
@@ -127,7 +150,6 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
                     it, when (it) {
                         ProxyChoice.NONE -> stringArray[0]
                         ProxyChoice.ORBOT -> stringArray[1]
-                        // ProxyChoice.I2P -> stringArray[2]
                         ProxyChoice.MANUAL -> stringArray[2]
                     }
                 )
@@ -148,7 +170,6 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
         if (sanitizedChoice == ProxyChoice.MANUAL) {
             showManualProxyPicker(activity, summaryUpdater)
         }
-
         userPreferences.proxyChoice = sanitizedChoice
         summaryUpdater.updateSummary(sanitizedChoice.toSummary())
     }
@@ -158,9 +179,6 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
         val eProxyHost = v.findViewById<TextView>(R.id.proxyHost)
         val eProxyPort = v.findViewById<TextView>(R.id.proxyPort)
 
-        // Limit the number of characters since the port needs to be of type int
-        // Use input filters to limit the EditText length and determine the max
-        // length by using length of integer MAX_VALUE
         val maxCharacters = Integer.MAX_VALUE.toString().length
         eProxyPort.filters = arrayOf<InputFilter>(InputFilter.LengthFilter(maxCharacters - 1))
 
@@ -173,13 +191,10 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
             setPositiveButton(R.string.action_ok) { _, _ ->
                 val proxyHost = eProxyHost.text.toString()
                 val proxyPort = try {
-                    // Try/Catch in case the user types an empty string or a number
-                    // larger than max integer
                     Integer.parseInt(eProxyPort.text.toString())
                 } catch (ignored: NumberFormatException) {
                     userPreferences.proxyPort
                 }
-
                 userPreferences.proxyHost = proxyHost
                 userPreferences.proxyPort = proxyPort
                 summaryUpdater.updateSummary("$proxyHost:$proxyPort")
@@ -234,20 +249,17 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
     private fun showDownloadLocationDialog(summaryUpdater: SummaryUpdater) {
         BrowserDialog.showCustomDialog(activity) {
             setTitle(resources.getString(R.string.title_download_location))
-            val n: Int =
-                if (userPreferences.downloadDirectory.contains(Environment.DIRECTORY_DOWNLOADS)) {
-                    0
-                } else {
-                    1
-                }
-
+            val n: Int = if (userPreferences.downloadDirectory.contains(Environment.DIRECTORY_DOWNLOADS)) {
+                0
+            } else {
+                1
+            }
             setSingleChoiceItems(R.array.download_folder, n) { _, which ->
                 when (which) {
                     0 -> {
                         userPreferences.downloadDirectory = FileUtils.DEFAULT_DOWNLOAD_PATH
                         summaryUpdater.updateSummary(FileUtils.DEFAULT_DOWNLOAD_PATH)
                     }
-
                     1 -> {
                         showCustomDownloadLocationPicker(summaryUpdater)
                     }
@@ -257,14 +269,13 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
         }
     }
 
-
     private fun showCustomDownloadLocationPicker(summaryUpdater: SummaryUpdater) {
         activity?.let { activity ->
             val dialogView = LayoutInflater.from(activity).inflate(R.layout.dialog_edit_text, null)
             val getDownload = dialogView.findViewById<EditText>(R.id.dialog_edit_text)
-
             val errorColor = ContextCompat.getColor(activity, R.color.error_red)
             val regularColor = ThemeUtils.getTextColor(activity)
+
             getDownload.setTextColor(regularColor)
             getDownload.addTextChangedListener(
                 DownloadLocationTextWatcher(
@@ -293,11 +304,8 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
         private val errorColor: Int,
         private val regularColor: Int
     ) : TextWatcher {
-
         override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
-
         override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
-
         override fun afterTextChanged(s: Editable) {
             if (!FileUtils.isWriteAccessAvailable(s.toString())) {
                 this.getDownload.setTextColor(this.errorColor)
@@ -323,24 +331,20 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
                 SCHEME_BOOKMARKS -> 2
                 else -> 3
             }
-
             setSingleChoiceItems(R.array.homepage, n) { _, which ->
                 when (which) {
                     0 -> {
                         userPreferences.homepage = SCHEME_HOMEPAGE
                         summaryUpdater.updateSummary(resources.getString(R.string.action_homepage))
                     }
-
                     1 -> {
                         userPreferences.homepage = SCHEME_BLANK
                         summaryUpdater.updateSummary(resources.getString(R.string.action_blank))
                     }
-
                     2 -> {
                         userPreferences.homepage = SCHEME_BOOKMARKS
                         summaryUpdater.updateSummary(resources.getString(R.string.action_bookmarks))
                     }
-
                     3 -> {
                         showCustomHomePagePicker(summaryUpdater)
                     }
@@ -356,7 +360,6 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
         } else {
             "https://www.google.com"
         }
-
         activity?.let {
             BrowserDialog.showEditText(
                 it,
@@ -385,26 +388,16 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
     private fun showSearchProviderDialog(summaryUpdater: SummaryUpdater) {
         BrowserDialog.showCustomDialog(activity) {
             setTitle(resources.getString(R.string.title_search_engine))
-
             val searchEngineList = searchEngineProvider.provideAllSearchEngines()
-
             val chars = convertSearchEngineToString(searchEngineList)
-
             val n = userPreferences.searchChoice
-
             setSingleChoiceItems(chars, n) { _, which ->
                 val searchEngine = searchEngineList[which]
-
-                // Store the search engine preference
-                val preferencesIndex =
-                    searchEngineProvider.mapSearchEngineToPreferenceIndex(searchEngine)
+                val preferencesIndex = searchEngineProvider.mapSearchEngineToPreferenceIndex(searchEngine)
                 userPreferences.searchChoice = preferencesIndex
-
                 if (searchEngine is CustomSearch) {
-                    // Show the URL picker
                     showCustomSearchDialog(searchEngine, summaryUpdater)
                 } else {
-                    // Set the new search engine summary
                     summaryUpdater.updateSummary(getSearchEngineSummary(searchEngine))
                 }
             }
@@ -424,23 +417,20 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
                 userPreferences.searchUrl = searchUrl
                 summaryUpdater.updateSummary(getSearchEngineSummary(customSearch))
             }
-
         }
     }
 
-    private fun searchSuggestionChoiceToTitle(choice: Suggestions): String =
-        when (choice) {
-            Suggestions.NONE -> getString(R.string.search_suggestions_off)
-            Suggestions.GOOGLE -> getString(R.string.powered_by_google)
-            Suggestions.DUCK -> getString(R.string.powered_by_duck)
-            Suggestions.BAIDU -> getString(R.string.powered_by_baidu)
-            Suggestions.NAVER -> getString(R.string.powered_by_naver)
-        }
+    private fun searchSuggestionChoiceToTitle(choice: Suggestions): String = when (choice) {
+        Suggestions.NONE -> getString(R.string.search_suggestions_off)
+        Suggestions.GOOGLE -> getString(R.string.powered_by_google)
+        Suggestions.DUCK -> getString(R.string.powered_by_duck)
+        Suggestions.BAIDU -> getString(R.string.powered_by_baidu)
+        Suggestions.NAVER -> getString(R.string.powered_by_naver)
+    }
 
     private fun showSearchSuggestionsDialog(summaryUpdater: SummaryUpdater) {
         BrowserDialog.showCustomDialog(activity) {
             setTitle(resources.getString(R.string.search_suggestions))
-
             val currentChoice = when (Suggestions.from(userPreferences.searchSuggestionChoice)) {
                 Suggestions.GOOGLE -> 0
                 Suggestions.DUCK -> 1
@@ -448,7 +438,6 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
                 Suggestions.NAVER -> 3
                 Suggestions.NONE -> 3
             }
-
             setSingleChoiceItems(R.array.suggestions, currentChoice) { _, which ->
                 val suggestionsProvider = when (which) {
                     0 -> Suggestions.GOOGLE
@@ -476,5 +465,6 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_HOME = "home"
         private const val SETTINGS_SEARCH_ENGINE = "search"
         private const val SETTINGS_SUGGESTIONS = "suggestions_choice"
+        private const val SETTINGS_USERSCRIPT = "userscript" // Key untuk menu UserScript
     }
 }
