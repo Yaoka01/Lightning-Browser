@@ -27,9 +27,15 @@ import javax.inject.Singleton
  */
 @Singleton
 class UserPreferences @Inject constructor(
-    @UserPrefs preferences: SharedPreferences,
+    @UserPrefs private val preferences: SharedPreferences,
     screenSize: ScreenSize
 ) {
+    /**
+     * Custom UserScript injected into every page.
+     */
+    var customUserScript: String
+        get() = preferences.getString(CUSTOM_USER_SCRIPT, "") ?: ""
+        set(value) = preferences.edit().putString(CUSTOM_USER_SCRIPT, value).apply()
 
     /**
      * True if Web RTC is enabled in the browser, false otherwise.
@@ -68,10 +74,6 @@ class UserPreferences @Inject constructor(
      * True if the browser should hide the navigation bar when scrolling, false if it should be
      * immobile.
      */
-    var customUserScript: String
-    get() = sharedPreferences.getString("custom_user_script", "") ?: ""
-    set(value) = sharedPreferences.edit().putString("custom_user_script", value).apply()
-     
     var fullScreenEnabled by preferences.booleanPreference(FULL_SCREEN, true)
 
     /**
@@ -230,7 +232,8 @@ class UserPreferences @Inject constructor(
     )
 
     var tabConfiguration by preferences.enumPreference(
-        TAB_CONFIGURATION, if (showTabsInDrawer) {
+        TAB_CONFIGURATION,
+        if (showTabsInDrawer) {
             TabConfiguration.DRAWER_BOTTOM
         } else {
             TabConfiguration.DESKTOP
@@ -305,6 +308,7 @@ class UserPreferences @Inject constructor(
     var hostsRemoteFile by preferences.nullableStringPreference(HOSTS_REMOTE_FILE)
 }
 
+private const val CUSTOM_USER_SCRIPT = "custom_user_script"
 private const val WEB_RTC = "webRtc"
 private const val BLOCK_ADS = "AdBlock"
 private const val BLOCK_IMAGES = "blockimages"
